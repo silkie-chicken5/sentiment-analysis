@@ -1,77 +1,126 @@
 import tensorflow as tf
 import numpy as np
-from functools import reduce
+import pandas as pd
+import re
+import nltk
+from sklearn.model_selection import train_test_split
+
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 
-def get_data(train_file, test_file):
-    """
-    Read and parse the train and test file line by line, then tokenize the sentences to build the train and test data separately.
-    Create a vocabulary dictionary that maps all the unique tokens from your train and test data as keys to a unique integer value.
-    Then vectorize your train and test data based on your vocabulary dictionary.
+def load_data():
+    '''
+    Method that was used to preprocess the data in the imdb_dataset.csv file.
+    '''
 
-    :param train_file: Path to the training file.
-    :param test_file: Path to the test file.
-    :return: Tuple of:
-        train (1-d list or array with training words in vectorized/id form), 
-        test (1-d list or array with testing words in vectorized/id form), 
-        vocabulary (Dict containg index->word mapping)
-    """
+    csv_file_path = f'data/imdb_reviews.csv'
+
+    csv = pd.read_csv(csv_file_path)
+    print(csv.head())
+
+    # turn positive sentiment into 1, negative sentiment into 0
+    csv.sentiment = [1 if s == 'positive' else 0 for s in csv.sentiment]
+
+    # DENOISING
+    # 1. noise removal (iterates through the dataframe column)
+    def clean_noise(r):
+        r = re.sub('<br\s*\/?>', ' ', r) # removes <br> tags
+        r = re.sub('[^\w\s]|http\S+|<.*?>', ' ', r) # removes numbers, hyperlinks, and special characters
+        r = re.sub('\s+', ' ', r.lower().strip()) # removes trailing whitespace
+        return r
+
+    csv['review'] = csv['review'].apply(lambda r: clean_noise(r)) # lambda instead of for loop for efficiency
+
+    # 2. stop words & duplicate removal
+    stop_word_list = set(nltk.corpus.stopwords.words('english'))
+    def remove_stop_words(r):
+        words = nltk.tokenize.word_tokenize(r)
+        filtered_review = [word for word in words if word not in stop_word_list] # checks against nltk corpus
+        return ' '.join(filtered_review)
     
-    #Possibly manually split the fully connected imdb dataset!! (to make life easier)
+    csv['review'] = csv['review'].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
+    print(csv.head())
 
-    # According to the article:
-    # 1. noise removal (special charas + hyperlinks)
-    # 2. tokenization & duplicate removal
-    #       combine all reviews into one txt file --> maybe do this beforehand?
-    #       convert file into list of tokens
-    #       remove all duplicates from list and switch to lowercase
-    # 3. define the dictionary/vocab size
-    #       make a list <key, value> with key = word and value = index of word in list
-    #       add <UNK> and digit at the end of the dictionary to acocunt for unk words in future
+    # PREPROCESSING
+    # randomly split examples into training and testing sets
+    train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['review'], csv['sentiment'], test_size=0.2, random_state=42)
+    vocabulary = {} 
+    tkn_train_reviews = []
+    tkn_test_reviews = []
 
+    # 3. tokenization
+    for review in train_reviews:
+        tokens = nltk.word_tokenize(review)
+        if len(review) > 25:  # 4. lemmatize if review word length >25 and truncatem, pad if <25
+            lemmatizer = nltk.WordNetLemmatizer()
+            tokens = [lemmatizer.lemmatize(token) for token in tokens]
 
-    # then adress feature vectorization:
-    # 1. represent each review as a vector, pulling each word from the vocab through an id
-    #         if word unavailable in dictionary, insert <UNK> index into it
-    # 2. use lemmatization if word length of review > 25 (process unspecified)
-    #         use NLT Python package to remove <STOP> from reviews
-    #         use "PCA" for dimensional reduction of feature matrix
+        if len(tokens) > 25:
+            tokens = tokens[:25]  # truncation post-lemmatization (preserving significant features)
+        else:
+            tokens += ['<unk>'] * (25 - len(tokens)) # padding
+        tkn_train_reviews.append(tokens)
+        for token in tokens:
+            if token not in vocabulary:
+                vocabulary[token] = 1  # count presence of word
+            else:
+                vocabulary[token] += 1
+
+    for review in test_reviews:
+        tokens = nltk.word_tokenize(review)
+        if len(review) > 25:  # 4. lemmatize if review word length > 25
+            lemmatizer = nltk.WordNetLemmatizer()
+            tokens = [lemmatizer.lemmatize(token) for token in tokens]
+
+        if len(tokens) > 25:
+            tokens = tokens[:25]  # truncation post-lemmatization (preserving significant features)
+        else:
+            tokens += ['<unk>'] * (25 - len(tokens)) # padding
+        tkn_test_reviews.append(tokens)
+
+    # convert rare words (>50 appaerances) to <unk> (done separately on training and testing since had to split to compute vocabulary)
+    to_pop = []
+    for i, tokens in enumerate(tkn_train_reviews):
+        for j, token in enumerate(tokens):
+            if token in vocabulary and vocabulary[token] < 50:
+                tkn_train_reviews[i][j] = '<unk>'
+                to_pop.append(token)
+
+    for i, tokens in enumerate(tkn_test_reviews):
+        for j, token in enumerate(tokens):
+            if token in vocabulary and vocabulary[token] < 50:
+                tkn_test_reviews[i][j] = '<unk>'
+                to_pop.append(token)
+            elif token not in vocabulary:
+                tkn_test_reviews[i][j] = '<unk>'
+
+    for tkn in to_pop:
+        if tkn in vocabulary:
+            vocabulary.pop(tkn)
+
+    # 5. build a vocabulary with unique indexes for each word
+    idx = 0
+    for token in vocabulary:
+        vocabulary[token] = idx
+        idx += 1
+    vocabulary['<unk>'] = len(vocabulary) # adding <UNK> to the vocabulary
+
+    # 6. feature vectorization
+    train_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_train_reviews]
+    test_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_test_reviews]
+    print('current vectorized reviews are ' + str(test_reviews))
     
-    
-    
-    
-    # Hint: You might not use all of the initialized variables depending on how you implement preprocessing. 
-    vocabulary, vocab_size, train_data, test_data = {}, 0, [], []
-    
-    # 1. convert sentence into concatenated list
-    with open(train_file, 'r') as file: # runs through train file
-        train_txt = file.read()
-    train_data = train_txt.lower().split() # converts it into list of words
 
-    with open(test_file, 'r') as file: # runs through test file
-        test_txt = file.read()
-    test_data = test_txt.lower().split() # converts it into list of words
-      
-    # 2. create a list of all unique words
-    unique_list = sorted(set(train_data + test_data))
+    return dict(
+        train_reviews          = np.array(train_reviews),
+        test_reviews           = np.array(test_reviews),
+        train_labels           = train_labels,
+        test_labels            = test_labels,
+        vocabulary             = vocabulary
+    )
 
-    # 3. create a vocab dictionary that maps each word to its index in the unique list
-    vocabulary = {w:i for i, w in enumerate(unique_list)}
-    # for word in train_data:
-    #     vocabulary[word] = vocabulary.get(word, len(vocabulary))
 
-    # 4. convert into list of tokens (down below)
-
-    # Sanity Check, make sure there are no new words in the test data.
-    assert reduce(lambda x, y: x and (y in vocabulary), test_data)
-    
-    # Uncomment the sanity check below if you end up using vocab_size
-    # Sanity check, make sure that all values are withi vocab size
-    # assert all(0 <= value < vocab_size for value in vocabulary.values())
-
-    # Vectorize, and return output tuple.
-    train_data = list(map(lambda x: vocabulary[x], train_data))
-    test_data  = list(map(lambda x: vocabulary[x], test_data))
-
-    # print("train_data", train_data)
-    return train_data, test_data, vocabulary
+if __name__ == '__main__':
+    load_data()
