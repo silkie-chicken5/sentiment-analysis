@@ -5,9 +5,9 @@ import pickle
 import tensorflow as tf
 from typing import Optional
 from types import SimpleNamespace
+from model import CoLSTM
 
-
-from model import ImageCaptionModel, accuracy_function, loss_function
+# from model import ImageCaptionModel, accuracy_function, loss_function
 # from decoder import TransformerDecoder, RNNDecoder
 # import transformer
 
@@ -21,17 +21,17 @@ def parse_args(args=None):
         parse_args('--type', 'rnn', ...)
     """
     parser = argparse.ArgumentParser(description="Let's train some neural nets!", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--type',           required=True,              choices=['rnn', 'transformer'],     help='Type of model to train')
-    parser.add_argument('--task',           required=True,              choices=['train', 'test', 'both'],  help='Task to run')
-    parser.add_argument('--data',           required=True,              help='File path to the assignment data file.')
-    parser.add_argument('--epochs',         type=int,   default=3,      help='Number of epochs used in training.')
+    # parser.add_argument('--type',           required=True,              choices=['rnn', 'transformer'],     help='Type of model to train')
+    parser.add_argument('--task',           required=True,              choices=['train', 'test', 'both'],  help='Task to run', default='both')
+    parser.add_argument('--data',           required=True,              help='File path to the assignment data file.', default='./data')
+    parser.add_argument('--epochs',         type=int,   default=5,      help='Number of epochs used in training.')
     parser.add_argument('--lr',             type=float, default=1e-3,   help='Model\'s learning rate')
     parser.add_argument('--optimizer',      type=str,   default='adam', choices=['adam', 'rmsprop', 'sgd'], help='Model\'s optimizer')
-    parser.add_argument('--batch_size',     type=int,   default=100,    help='Model\'s batch size.')
+    parser.add_argument('--batch_size',     type=int,   default=128,    help='Model\'s batch size.')
     parser.add_argument('--hidden_size',    type=int,   default=256,    help='Hidden size used to instantiate the model.')
-    parser.add_argument('--window_size',    type=int,   default=20,     help='Window size of text entries.')
-    parser.add_argument('--chkpt_path',     default='',                 help='where the model checkpoint is')
-    parser.add_argument('--check_valid',    default=True,               action="store_true",  help='if training, also print validation after each epoch')
+    # parser.add_argument('--window_size',    type=int,   default=20,     help='Window size of text entries.')
+    # parser.add_argument('--chkpt_path',     default='',                 help='where the model checkpoint is')
+    # parser.add_argument('--check_valid',    default=True,               action="store_true",  help='if training, also print validation after each epoch')
     if args is None: 
         return parser.parse_args()      ## For calling through command line
     return parser.parse_args(args)      ## For calling through notebook.
@@ -46,7 +46,7 @@ def main(args):
 
     feat_prep = lambda x: np.repeat(np.array(x).reshape(-1, 2048), 5, axis=0)
     # img_prep  = lambda x: np.repeat(x, 5, axis=0)
-    train_text  = np.array(data_dict['train_reviews'])
+    train_text  = np.array(data_dict['train_reviews']) 
     test_text   = np.array(data_dict['test_reviews'])
     train_labels = feat_prep(data_dict['train_labels'])
     test_labels  = feat_prep(data_dict['test_labels'])
@@ -55,40 +55,48 @@ def main(args):
     vocabulary        = data_dict['vocabulary']
     # idx2word        = data_dict['idx2word']
 
+
+    model = CoLSTM(vocab_size=len(vocabulary))
+
     ##############################################################################
     ## Training Task
     if args.task in ('train', 'both'):
         ##############################################################################
         ## Model Construction
-        decoder_class = {
-            'rnn'           : RNNDecoder,
-            'transformer'   : TransformerDecoder
-        }[args.type]
+        # decoder_class = {
+        #     'rnn'           : RNNDecoder,
+        #     'transformer'   : TransformerDecoder
+        # }[args.type]
 
-        decoder = decoder_class(
-            vocab_size  = len(word2idx), 
-            hidden_size = args.hidden_size, 
-            window_size = args.window_size
-        )
+        # decoder = decoder_class(
+        #     vocab_size  = len(word2idx), 
+        #     hidden_size = args.hidden_size, 
+        #     window_size = args.window_size
+        # )
         
-        model = ImageCaptionModel(decoder)
-        compile_model(model, args)
-        train_model(
-            model, train_text, train_labels, word2idx['<pad>'], args, 
-            valid = (test_text, test_labels)
-        )
-        if args.chkpt_path: 
-            ## Save model to run testing task afterwards
-            save_model(model, args)
+        # compile_model(model, args)
+        # train_model(
+        #     model, train_text, train_labels, word2idx['<pad>'], args, 
+        #     valid = (test_text, test_labels)
+        # )
+        # if args.chkpt_path: 
+        #     ## Save model to run testing task afterwards
+        #     save_model(model, args)
+        # for epoch_id in range(args.num_epochs):
+        train_model(model, train_text, train_labels, args)
+            # print(f"Train Epoch: {epoch_id} \tLoss: {total_loss / len(train_text):.6f}")
                 
     ##############################################################################
     ## Testing Task
     if args.task in ('test', 'both'):
-        if args.task != 'both': 
+        # if args.task != 'both': 
             ## Load model for testing. Note that architecture needs to be consistent
-            model = load_model(args)
-        if not (args.task == 'both' and args.check_valid):
-            test_model(model, test_text, test_labels, word2idx['<pad>'], args)
+            # model = load_model(args)
+
+        # if not (args.task == 'both' and args.check_valid):
+        #    test_model(model, test_text, test_labels, word2idx['<pad>'], args)
+        total_loss = test_model(model, test_text, test_labels, args)
+        print(f"Test \tLoss: {total_loss / len(train_text):.6f}")
 
     ##############################################################################
 
@@ -141,27 +149,31 @@ def compile_model(model, args):
     )
 
 
-def train_model(model, captions, img_feats, pad_idx, args, valid):
+def train_model(model, reviews, labels, args):
     '''Trains model and returns model statistics'''
-    stats = []
+    # stats = []
     try:
         for epoch in range(args.epochs):
-            stats += [model.train(captions, img_feats, pad_idx, batch_size=args.batch_size)]
-            if args.check_valid:
-                model.test(valid[0], valid[1], pad_idx, batch_size=args.batch_size)
+            # stats += [model.train(reviews, labels, batch_size=args.batch_size)]
+            total_loss = model.train(reviews, labels, batch_size=args.batch_size)
+            print(f"Train Epoch: {epoch} \tLoss: {total_loss / len(revi):.6f}")
+            # if args.check_valid:
+            #     model.test(valid[0], , batch_size=args.batch_size)
     except KeyboardInterrupt as e:
         if epoch > 0:
             print("Key-value interruption. Trying to early-terminate. Interrupt again to not do that!")
         else: 
             raise e
         
-    return stats
+    # return stats
 
 
-def test_model(model, captions, img_feats, pad_idx, args):
+def test_model(model, reviews, labels, args):
     '''Tests model and returns model statistics'''
-    perplexity, accuracy = model.test(captions, img_feats, pad_idx, batch_size=args.batch_size)
-    return perplexity, accuracy
+    # perplexity, accuracy = model.test(reviews, labels, batch_size=args.batch_size)
+    total_loss = model.test(reviews, labels, batch_size=args.batch_size)
+    # return perplexity, accuracy
+    return total_loss
 
 
 ## END UTILITY METHODS
