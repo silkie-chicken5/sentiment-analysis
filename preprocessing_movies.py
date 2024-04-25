@@ -110,7 +110,7 @@ def load_data():
     # 6. feature vectorization
     train_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_train_reviews]
     test_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_test_reviews]
-    print('current vectorized reviews are ' + str(test_reviews))
+    # print('current vectorized reviews are ' + str(test_reviews))
     
 
     return dict(

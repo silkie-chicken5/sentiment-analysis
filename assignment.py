@@ -1,7 +1,8 @@
 import os
 import argparse
 import numpy as np
-import pickle
+# import pickle
+from preprocessing_movies import load_data 
 import tensorflow as tf
 from typing import Optional
 from types import SimpleNamespace
@@ -22,8 +23,8 @@ def parse_args(args=None):
     """
     parser = argparse.ArgumentParser(description="Let's train some neural nets!", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # parser.add_argument('--type',           required=True,              choices=['rnn', 'transformer'],     help='Type of model to train')
-    parser.add_argument('--task',           required=True,              choices=['train', 'test', 'both'],  help='Task to run', default='both')
-    parser.add_argument('--data',           required=True,              help='File path to the assignment data file.', default='./data')
+    parser.add_argument('--task',           choices=['train', 'test', 'both'],  help='Task to run', default='both')
+    parser.add_argument('--data',           help='File path to the assignment data file.', default='./data/IMDB Dataset.csv')
     parser.add_argument('--epochs',         type=int,   default=5,      help='Number of epochs used in training.')
     parser.add_argument('--lr',             type=float, default=1e-3,   help='Model\'s learning rate')
     parser.add_argument('--optimizer',      type=str,   default='adam', choices=['adam', 'rmsprop', 'sgd'], help='Model\'s optimizer')
@@ -41,19 +42,25 @@ def main(args):
 
     ##############################################################################
     ## Data Loading
-    with open(args.data, 'rb') as data_file:
-        data_dict = pickle.load(data_file)
+    # with open(args.data, 'rb') as data_file: DOES NOT WORK WITH CSVs
+    #     data_dict = pickle.load(data_file)
+    
+    data_dict = load_data() # will need to replace with argument to decide which data to load
 
-    feat_prep = lambda x: np.repeat(np.array(x).reshape(-1, 2048), 5, axis=0)
-    # img_prep  = lambda x: np.repeat(x, 5, axis=0)
     train_text  = np.array(data_dict['train_reviews']) 
     test_text   = np.array(data_dict['test_reviews'])
-    train_labels = feat_prep(data_dict['train_labels'])
-    test_labels  = feat_prep(data_dict['test_labels'])
+    print(data_dict['train_labels'].shape)
+    print(data_dict['test_labels'].shape)
+    train_labels = data_dict['train_labels'] # shape: (40000,)
+    test_labels  = data_dict['test_labels'] # shape: (10000,)
+
+    vocabulary        = data_dict['vocabulary']
+
+    # Vestigial Code
     # train_images    = img_prep(data_dict['train_images'])
     # test_images     = img_prep(data_dict['test_images'])
-    vocabulary        = data_dict['vocabulary']
     # idx2word        = data_dict['idx2word']
+    # feat_prep = lambda x: np.repeat(np.array(x).reshape(-1, 2048), 5, axis=0)
 
 
     model = CoLSTM(vocab_size=len(vocabulary))
@@ -62,17 +69,6 @@ def main(args):
     ## Training Task
     if args.task in ('train', 'both'):
         ##############################################################################
-        ## Model Construction
-        # decoder_class = {
-        #     'rnn'           : RNNDecoder,
-        #     'transformer'   : TransformerDecoder
-        # }[args.type]
-
-        # decoder = decoder_class(
-        #     vocab_size  = len(word2idx), 
-        #     hidden_size = args.hidden_size, 
-        #     window_size = args.window_size
-        # )
         
         # compile_model(model, args)
         # train_model(
@@ -103,50 +99,50 @@ def main(args):
 ##############################################################################
 ## UTILITY METHODS
 
-def save_model(model, args):
-    '''Loads model based on arguments'''
-    os.makedirs(f"{args.chkpt_path}", exist_ok=True)
+# def save_model(model, args):
+#     '''Loads model based on arguments'''
+#     os.makedirs(f"{args.chkpt_path}", exist_ok=True)
 
-    tf.keras.models.save_model(model, args.chkpt_path)
-    print(f"Model saved to {args.chkpt_path}")
+#     tf.keras.models.save_model(model, args.chkpt_path)
+#     print(f"Model saved to {args.chkpt_path}")
 
 
-def load_model(args):
-    '''Loads model by reference based on arguments. Also returns said model'''
-    model = tf.keras.models.load_model(
-        args.chkpt_path,
-        custom_objects=dict(
-            AttentionHead           = transformer.AttentionHead,
-            AttentionMatrix         = transformer.AttentionMatrix,
-            MultiHeadedAttention    = transformer.MultiHeadedAttention,
-            TransformerBlock        = transformer.TransformerBlock,
-            PositionalEncoding      = transformer.PositionalEncoding,
-            TransformerDecoder      = TransformerDecoder,
-            RNNDecoder              = RNNDecoder,
-            ImageCaptionModel       = ImageCaptionModel
-        ),
-    )
+# def load_model(args):
+#     '''Loads model by reference based on arguments. Also returns said model'''
+#     model = tf.keras.models.load_model(
+#         args.chkpt_path,
+#         custom_objects=dict(
+#             AttentionHead           = transformer.AttentionHead,
+#             AttentionMatrix         = transformer.AttentionMatrix,
+#             MultiHeadedAttention    = transformer.MultiHeadedAttention,
+#             TransformerBlock        = transformer.TransformerBlock,
+#             PositionalEncoding      = transformer.PositionalEncoding,
+#             TransformerDecoder      = TransformerDecoder,
+#             RNNDecoder              = RNNDecoder,
+#             ImageCaptionModel       = ImageCaptionModel
+#         ),
+#     )
     
     ## Saving is very nuanced. Might need to set the custom components correctly.
     ## Functools.partial is a function wrapper that auto-fills a selection of arguments. 
     ## so in other words, the first argument of ImageCaptionModel.test is model (for self)
-    from functools import partial
-    model.test    = partial(ImageCaptionModel.test,    model)
-    model.train   = partial(ImageCaptionModel.train,   model)
-    model.compile = partial(ImageCaptionModel.compile, model)
-    compile_model(model, args)
-    print(f"Model loaded from '{args.chkpt_path}'")
-    return model
+    # from functools import partial
+    # model.test    = partial(ImageCaptionModel.test,    model)
+    # model.train   = partial(ImageCaptionModel.train,   model)
+    # model.compile = partial(ImageCaptionModel.compile, model)
+    # compile_model(model, args)
+    # print(f"Model loaded from '{args.chkpt_path}'")
+    # return model
 
 
-def compile_model(model, args):
-    '''Compiles model by reference based on arguments'''
-    optimizer = tf.keras.optimizers.get(args.optimizer).__class__(learning_rate = args.lr)
-    model.compile(
-        optimizer   = optimizer,
-        loss        = loss_function,
-        metrics     = [accuracy_function]
-    )
+# def compile_model(model, args):
+#     '''Compiles model by reference based on arguments'''
+#     optimizer = tf.keras.optimizers.get(args.optimizer).__class__(learning_rate = args.lr)
+#     model.compile(
+#         optimizer   = optimizer,
+#         loss        = loss_function,
+#         metrics     = [accuracy_function]
+#     )
 
 
 def train_model(model, reviews, labels, args):

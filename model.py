@@ -8,6 +8,7 @@ class CoLSTM(tf.keras.Model):
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         # self.window_size = window_size
+        self.embed_size = 128
         self.output_size = 1 # pos or neg
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001)
 
@@ -80,8 +81,8 @@ class CoLSTM(tf.keras.Model):
             ## Get the current batch of data, making sure to try to predict the next word
             start = end - batch_size
             b0 = end - batch_size
-            train_inputs_batches = reviews_shuffled[b0:b1]
-            train_labels_batches = labels_shuffled[b0:b1]
+            train_inputs_batches = reviews_shuffled[b0:end]
+            train_labels_batches = labels_shuffled[b0:end]
             # batch_image_features = image_features_shuffled[start:end, :]
             # decoder_input = captions_shuffled[start:end, :-1]
             # decoder_labels = captions_shuffled[start:end, 1:]
