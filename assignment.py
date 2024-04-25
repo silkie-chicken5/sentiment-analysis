@@ -63,7 +63,7 @@ def main(args):
     # feat_prep = lambda x: np.repeat(np.array(x).reshape(-1, 2048), 5, axis=0)
 
 
-    model = CoLSTM(vocab_size=len(vocabulary))
+    model = CoLSTM(vocab_size=(len(vocabulary) + 1))
 
     ##############################################################################
     ## Training Task
@@ -92,7 +92,7 @@ def main(args):
         # if not (args.task == 'both' and args.check_valid):
         #    test_model(model, test_text, test_labels, word2idx['<pad>'], args)
         total_loss = test_model(model, test_text, test_labels, args)
-        print(f"Test \tLoss: {total_loss / len(train_text):.6f}")
+        print(f"Test \tLoss: {np.mean(total_loss / len(train_text)):.6f}")
 
     ##############################################################################
 
@@ -152,7 +152,7 @@ def train_model(model, reviews, labels, args):
         for epoch in range(args.epochs):
             # stats += [model.train(reviews, labels, batch_size=args.batch_size)]
             total_loss = model.train(reviews, labels, batch_size=args.batch_size)
-            print(f"Train Epoch: {epoch} \tLoss: {total_loss / len(revi):.6f}")
+            print(f"Train Epoch: {epoch} \tLoss: {np.mean(total_loss / len(reviews)):.6f}")
             # if args.check_valid:
             #     model.test(valid[0], , batch_size=args.batch_size)
     except KeyboardInterrupt as e:

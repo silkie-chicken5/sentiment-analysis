@@ -13,20 +13,22 @@ class CoLSTM(tf.keras.Model):
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001)
 
         # Convolution Hyperparameters
-        self.kernel_size = (3,3)
+        # self.kernel_size = (3,3)
+        self.kernel_size = 3
         self.num_filters = 7
-        self.pool_size = (2, 2)
+        # self.pool_size = (2, 2)
+        self.pool_size = 2
         self.strides = None # defaults to pool size
         self.padding = "same"
         
         self.embedding = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_size)
-        self.cnn = tf.keras.layers.Conv2D(
+        self.cnn = tf.keras.layers.Conv1D(
             filters = self.num_filters, 
             kernel_size=self.kernel_size, 
             padding=self.padding,
         )
         
-        self.pooling = tf.keras.layers.MaxPooling2D(
+        self.pooling = tf.keras.layers.MaxPooling1D(
             pool_size=self.pool_size,
             strides=self.strides,
             padding=self.padding,
@@ -42,7 +44,7 @@ class CoLSTM(tf.keras.Model):
         cnn_pooled = self.pooling(cnn_output)
         lstm_out = self.lstm(cnn_pooled)
         dense_out = self.dense(lstm_out[0])
-        return tf.nn.softmax(dense_out) # returns probabilities, not logits 
+        return tf.nn.softmax(dense_out) # MIGHT NOT BE NECESSARY TO SOFTMAX BECAUSE SIGMOID ACTIVATION ALREADY RETURNS PROBS
 
 #     def compile(self, optimizer, loss, metrics):
 #         '''
@@ -93,8 +95,9 @@ class CoLSTM(tf.keras.Model):
                 # mask = decoder_labels != padding_index
                 # num_predictions = tf.reduce_sum(tf.cast(mask, tf.float32))
                 # loss = self.loss_function(probs, decoder_labels, mask)
+                probs_binary = tf.cast(tf.greater_equal(probs, 0.5), tf.int64) # case for binary accuracy calculation
                 loss = tf.keras.losses.binary_crossentropy(train_labels_batches, probs)
-                accuracy = tf.keras.metrics.binary_accuracy(train_labels_batches, probs)
+                accuracy = tf.keras.metrics.binary_accuracy(train_labels_batches, probs_binary)
             gradients = tape.gradient(loss, self.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
             # accuracy = tf.keras.metrics.binary_accuracy(labels, probs, mask)
