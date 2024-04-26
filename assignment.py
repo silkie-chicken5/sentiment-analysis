@@ -1,7 +1,7 @@
 import os
 import argparse
 import numpy as np
-# import pickle
+import pickle
 from preprocessing_movies import load_data 
 import tensorflow as tf
 from typing import Optional
@@ -24,7 +24,7 @@ def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Let's train some neural nets!", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # parser.add_argument('--type',           required=True,              choices=['rnn', 'transformer'],     help='Type of model to train')
     parser.add_argument('--task',           choices=['train', 'test', 'both'],  help='Task to run', default='both')
-    parser.add_argument('--data',           help='File path to the assignment data file.', default='./data/IMDB Dataset.csv')
+    parser.add_argument('--data',           help='File path to the assignment data file.', default='./data/imdb_test.csv')
     parser.add_argument('--epochs',         type=int,   default=5,      help='Number of epochs used in training.')
     parser.add_argument('--lr',             type=float, default=1e-3,   help='Model\'s learning rate')
     parser.add_argument('--optimizer',      type=str,   default='adam', choices=['adam', 'rmsprop', 'sgd'], help='Model\'s optimizer')
@@ -44,13 +44,18 @@ def main(args):
     ## Data Loading
     # with open(args.data, 'rb') as data_file: DOES NOT WORK WITH CSVs
     #     data_dict = pickle.load(data_file)
+    print("in main")
     
     data_dict = load_data() # will need to replace with argument to decide which data to load
 
     train_text  = np.array(data_dict['train_reviews']) 
     test_text   = np.array(data_dict['test_reviews'])
-    print(data_dict['train_labels'].shape)
-    print(data_dict['test_labels'].shape)
+    # print("train text: ")
+    # print(train_text)
+    # print("test text: ")
+    # print(test_text)
+    # print(data_dict['train_labels'].shape)
+    # print(data_dict['test_labels'].shape)
     train_labels = data_dict['train_labels'] # shape: (40000,)
     test_labels  = data_dict['test_labels'] # shape: (10000,)
 
@@ -92,7 +97,9 @@ def main(args):
         # if not (args.task == 'both' and args.check_valid):
         #    test_model(model, test_text, test_labels, word2idx['<pad>'], args)
         total_loss = test_model(model, test_text, test_labels, args)
-        print(f"Test \tLoss: {np.mean(total_loss / len(train_text)):.6f}")
+        # print("total loss manual calculation: ", tf.math.reduce_mean(total_loss))
+        print(f"Test \tLoss: {tf.math.reduce_mean(total_loss):.6f}")
+        # print(f"Test \tLoss: {np.mean(total_loss / len(train_text)):.6f}")
 
     ##############################################################################
 
@@ -148,11 +155,15 @@ def main(args):
 def train_model(model, reviews, labels, args):
     '''Trains model and returns model statistics'''
     # stats = []
+    print("in train_model")
     try:
         for epoch in range(args.epochs):
             # stats += [model.train(reviews, labels, batch_size=args.batch_size)]
             total_loss = model.train(reviews, labels, batch_size=args.batch_size)
-            print(f"Train Epoch: {epoch} \tLoss: {np.mean(total_loss / len(reviews)):.6f}")
+            # print("total loss manual calculation: ", tf.math.reduce_mean(total_loss))
+            # print("len of dataset is: ", len(reviews))
+            # print("test val: ", tf.math.reduce_mean(total_loss / len(reviews)))
+            print(f"Train Epoch: {epoch} \tLoss: {tf.math.reduce_mean(total_loss):.6f}")
             # if args.check_valid:
             #     model.test(valid[0], , batch_size=args.batch_size)
     except KeyboardInterrupt as e:
@@ -166,6 +177,7 @@ def train_model(model, reviews, labels, args):
 
 def test_model(model, reviews, labels, args):
     '''Tests model and returns model statistics'''
+    print("in test_model")
     # perplexity, accuracy = model.test(reviews, labels, batch_size=args.batch_size)
     total_loss = model.test(reviews, labels, batch_size=args.batch_size)
     # return perplexity, accuracy
