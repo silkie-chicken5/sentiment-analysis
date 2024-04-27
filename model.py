@@ -13,29 +13,47 @@ class CoLSTM(tf.keras.Model):
         self.output_size = 1 # pos or neg
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001)
 
-        # Convolution Hyperparameters
+        # Convolution Hyperparameters  CNN MIGHT BE STRIDE 1 VALID PADDING?
         # self.kernel_size = (3,3)
-        self.kernel_size = 3
+        # self.kernel_size = 3
+        # self.num_filters = 7
+        # # self.pool_size = (2, 2)
+        # self.pool_size = 2
+        # self.strides = None # defaults to pool size
+        # self.padding = "same"
+        
+        # self.embedding = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_size)
+        # self.cnn = tf.keras.layers.Conv1D(
+        #     filters = self.num_filters, 
+        #     kernel_size=self.kernel_size, 
+        #     padding=self.padding, # strides is default 1
+        # )
+
+        # self.pooling = tf.keras.layers.MaxPooling1D(
+        #     pool_size=self.pool_size,
+        #     strides=self.strides,
+        #     padding=self.padding,
+        # )
+
+        #2D
+        self.kernel_size = (3, 3) # Now specifying height and width for Conv2D
         self.num_filters = 7
-        # self.pool_size = (2, 2)
-        self.pool_size = 2
-        self.strides = None # defaults to pool size
-        self.padding = "same"
-        
+        self.pool_size = (2, 2) # For 2D pooling
+        self.strides = (1, 1) # Stride of 1
+        self.padding = "same" # This will reduce the dimension as no padding is added
+
         self.embedding = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_size)
-        self.cnn = tf.keras.layers.Conv1D(
-            filters = self.num_filters, 
-            kernel_size=self.kernel_size, 
-            padding=self.padding,
-        )
-        
-        self.pooling = tf.keras.layers.MaxPooling1D(
-            pool_size=self.pool_size,
+        self.cnn = tf.keras.layers.Conv2D(
+            filters=self.num_filters,
+            kernel_size=self.kernel_size,
             strides=self.strides,
             padding=self.padding,
         )
+        self.pooling = tf.keras.layers.MaxPooling2D(pool_size=self.pool_size)
         
+
         self.lstm = tf.keras.layers.LSTM(units=self.hidden_size, return_sequences=True, return_state=True)
+        self.dropout = tf.keras.layers.Dropout(0.1)
         self.dense = tf.keras.layers.Dense(units=self.output_size, activation="sigmoid")
     
     @tf.function
@@ -43,13 +61,27 @@ class CoLSTM(tf.keras.Model):
         print("in call")
         review_embeddings = self.embedding(reviews) # reviews need to have dimension of self.vocab_size
         print("review embeddings shape: ", review_embeddings.shape)
+
+        # cnn_output = self.cnn(review_embeddings)
+        # print("cnn_output shape: ", cnn_output.shape)
+        # cnn_pooled = self.pooling(cnn_output)
+        # print("cnn pooled shape: ", cnn_pooled)
+        
+        review_embeddings = tf.expand_dims(review_embeddings, axis=-1)
+        print("review embeddings shape expanded: ", review_embeddings.shape)
         cnn_output = self.cnn(review_embeddings)
+        # cnn_output = tf.squeeze(cnn_output, axis=2)
         print("cnn_output shape: ", cnn_output.shape)
         cnn_pooled = self.pooling(cnn_output)
+        # cnn_pooled = tf.reshape(cnn_pooled, [tf.shape(cnn_pooled)[0], -1, self.num_filters])
+        cnn_pooled = tf.reshape(cnn_pooled, [tf.shape(cnn_pooled)[0], tf.shape(cnn_pooled)[1], -1])
         print("cnn pooled shape: ", cnn_pooled)
+
         lstm_out = self.lstm(cnn_pooled)
         print("lstm out shape: ", lstm_out[0].shape)
-        dense_out = self.dense(lstm_out[0])
+        dropout = self.dropout(lstm_out[0]) # Daniel: added dropout layer
+        print("dropout shape: ", dropout)
+        dense_out = self.dense(dropout)
         print("dense out shape is: ", dense_out.shape)
         print("output size is: ", self.output_size)
         return dense_out
@@ -130,6 +162,7 @@ class CoLSTM(tf.keras.Model):
         for index, end in enumerate(range(batch_size, len(reviews_shuffled)+1, batch_size)):
             ## Get the current batch of data, making sure to try to predict the next word
             start = end - batch_size
+            print("TRAINING: ", start)
             # b0 = end - batch_size
             # train_inputs_batches = reviews_shuffled[b0:end]
             # train_labels_batches = labels_shuffled[b0:end]
