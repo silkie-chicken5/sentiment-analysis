@@ -28,7 +28,7 @@ def parse_args(args=None):
     parser.add_argument('--epochs',         type=int,   default=5,      help='Number of epochs used in training.')
     parser.add_argument('--lr',             type=float, default=1e-3,   help='Model\'s learning rate')
     parser.add_argument('--optimizer',      type=str,   default='adam', choices=['adam', 'rmsprop', 'sgd'], help='Model\'s optimizer')
-    parser.add_argument('--batch_size',     type=int,   default=128,    help='Model\'s batch size.')
+    parser.add_argument('--batch_size',     type=int,   default=30,    help='Model\'s batch size.')
     parser.add_argument('--hidden_size',    type=int,   default=256,    help='Hidden size used to instantiate the model.')
     # parser.add_argument('--window_size',    type=int,   default=20,     help='Window size of text entries.')
     # parser.add_argument('--chkpt_path',     default='',                 help='where the model checkpoint is')
@@ -96,9 +96,9 @@ def main(args):
 
         # if not (args.task == 'both' and args.check_valid):
         #    test_model(model, test_text, test_labels, word2idx['<pad>'], args)
-        total_loss = test_model(model, test_text, test_labels, args)
+        total_loss, total_accuracy = test_model(model, test_text, test_labels, args)
         # print("total loss manual calculation: ", tf.math.reduce_mean(total_loss))
-        print(f"Test \tLoss: {tf.math.reduce_mean(total_loss):.6f}")
+        print(f"Test \tLoss: {tf.math.reduce_mean(total_loss):.6f} \tAccuracy: {tf.math.reduce_mean(total_accuracy):.6f}")
         # print(f"Test \tLoss: {np.mean(total_loss / len(train_text)):.6f}")
 
     ##############################################################################
@@ -159,11 +159,11 @@ def train_model(model, reviews, labels, args):
     try:
         for epoch in range(args.epochs):
             # stats += [model.train(reviews, labels, batch_size=args.batch_size)]
-            total_loss = model.train(reviews, labels, batch_size=args.batch_size)
+            total_loss, total_accuracy = model.train(reviews, labels, batch_size=args.batch_size)
             # print("total loss manual calculation: ", tf.math.reduce_mean(total_loss))
             # print("len of dataset is: ", len(reviews))
             # print("test val: ", tf.math.reduce_mean(total_loss / len(reviews)))
-            print(f"Train Epoch: {epoch} \tLoss: {tf.math.reduce_mean(total_loss):.6f}")
+            print(f"Train Epoch: {epoch} \tLoss: {tf.math.reduce_mean(total_loss):.6f} \tAccuracy: {tf.math.reduce_mean(total_accuracy):.6f}")
             # if args.check_valid:
             #     model.test(valid[0], , batch_size=args.batch_size)
     except KeyboardInterrupt as e:
@@ -179,9 +179,9 @@ def test_model(model, reviews, labels, args):
     '''Tests model and returns model statistics'''
     print("in test_model")
     # perplexity, accuracy = model.test(reviews, labels, batch_size=args.batch_size)
-    total_loss = model.test(reviews, labels, batch_size=args.batch_size)
+    total_loss, total_accuracy = model.test(reviews, labels, batch_size=args.batch_size)
     # return perplexity, accuracy
-    return total_loss
+    return total_loss, total_accuracy
 
 
 ## END UTILITY METHODS

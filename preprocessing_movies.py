@@ -48,7 +48,7 @@ def load_data():
 
     # PREPROCESSING
     # randomly split examples into training and testing sets
-    train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['review'], csv['sentiment'], test_size=0.2, random_state=42)
+    train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['review'], csv['sentiment'], test_size=0.25, train_size=0.75, random_state=42)
     # print("train reviews: ")
     # print(train_reviews)
     # print("test reviews: ")
