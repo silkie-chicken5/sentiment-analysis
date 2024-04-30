@@ -15,11 +15,13 @@ def load_data():
     Method that was used to preprocess the data in the imdb_dataset.csv file.
     '''
 
-    csv_file_path = f'data/imdb_reviews.csv'
+    csv_file_path = f'data/election_sentiment.csv'
 
-    csv = pd.read_csv(csv_file_path)
+    csv = pd.read_csv(csv_file_path, usecols=['sentiment', 'text'], engine='python')  # keep only relevant columns in the dataset
     print(csv.head())
 
+    # remove neutral rows
+    csv = csv[csv.sentiment != 'neutral']
     # turn positive sentiment into 1, negative sentiment into 0
     csv.sentiment = [1 if s == 'positive' else 0 for s in csv.sentiment]
 
@@ -31,7 +33,7 @@ def load_data():
         r = re.sub('\s+', ' ', r.lower().strip()) # removes trailing whitespace
         return r
 
-    csv['review'] = csv['review'].apply(lambda r: clean_noise(r)) # lambda instead of for loop for efficiency
+    csv['text'] = csv['text'].apply(lambda r: clean_noise(r)) # lambda instead of for loop for efficiency
 
     # 2. stop words & duplicate removal
     stop_word_list = set(nltk.corpus.stopwords.words('english'))
@@ -40,12 +42,12 @@ def load_data():
         filtered_review = [word for word in words if word not in stop_word_list] # checks against nltk corpus
         return ' '.join(filtered_review)
     
-    csv['review'] = csv['review'].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
+    csv['text'] = csv['text'].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
     print(csv.head())
 
     # PREPROCESSING
     # randomly split examples into training and testing sets
-    train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['review'], csv['sentiment'], test_size=0.3, random_state=42)
+    train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['text'], csv['sentiment'], test_size=0.3, random_state=42)
     vocabulary = {} 
     tkn_train_reviews = []
     tkn_test_reviews = []
@@ -80,17 +82,21 @@ def load_data():
             tokens += ['<unk>'] * (25 - len(tokens)) # padding
         tkn_test_reviews.append(tokens)
 
+
+    print(train_reviews[:5])
+    print(tkn_train_reviews[:5])
+
     # convert rare words (<20 appearances) to <unk> (done separately on training and testing since had to split to compute vocabulary)
     to_pop = []
     for i, tokens in enumerate(tkn_train_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 10:
                 tkn_train_reviews[i][j] = '<unk>'
                 to_pop.append(token)
 
     for i, tokens in enumerate(tkn_test_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 10:
                 tkn_test_reviews[i][j] = '<unk>'
                 to_pop.append(token)
             elif token not in vocabulary:

@@ -15,13 +15,15 @@ def load_data():
     Method that was used to preprocess the data in the imdb_dataset.csv file.
     '''
 
-    csv_file_path = f'data/imdb_reviews.csv'
+    csv_file_path = f'data/airline_tweets.csv'
 
-    csv = pd.read_csv(csv_file_path)
+    csv = pd.read_csv(csv_file_path, usecols=['airline_sentiment', 'text'], engine='python')  # keep only relevant columns in the dataset
     print(csv.head())
 
+    # remove neutral rows
+    csv = csv[csv.airline_sentiment != 'neutral']
     # turn positive sentiment into 1, negative sentiment into 0
-    csv.sentiment = [1 if s == 'positive' else 0 for s in csv.sentiment]
+    csv.airline_sentiment = [1 if s == 'positive' else 0 for s in csv.airline_sentiment]
 
     # DENOISING
     # 1. noise removal (iterates through the dataframe column)
@@ -31,7 +33,7 @@ def load_data():
         r = re.sub('\s+', ' ', r.lower().strip()) # removes trailing whitespace
         return r
 
-    csv['review'] = csv['review'].apply(lambda r: clean_noise(r)) # lambda instead of for loop for efficiency
+    csv['text'] = csv['text'].apply(lambda r: clean_noise(r)) # lambda instead of for loop for efficiency
 
     # 2. stop words & duplicate removal
     stop_word_list = set(nltk.corpus.stopwords.words('english'))
@@ -40,12 +42,12 @@ def load_data():
         filtered_review = [word for word in words if word not in stop_word_list] # checks against nltk corpus
         return ' '.join(filtered_review)
     
-    csv['review'] = csv['review'].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
+    csv['text'] = csv['text'].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
     print(csv.head())
 
     # PREPROCESSING
     # randomly split examples into training and testing sets
-    train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['review'], csv['sentiment'], test_size=0.3, random_state=42)
+    train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['text'], csv['airline_sentiment'], test_size=0.3, random_state=42)
     vocabulary = {} 
     tkn_train_reviews = []
     tkn_test_reviews = []
@@ -80,17 +82,21 @@ def load_data():
             tokens += ['<unk>'] * (25 - len(tokens)) # padding
         tkn_test_reviews.append(tokens)
 
-    # convert rare words (<20 appearances) to <unk> (done separately on training and testing since had to split to compute vocabulary)
+
+    print(train_reviews[:5])
+    print(tkn_train_reviews[:5])
+
+    # convert rare words (<10 appearances) to <unk> (done separately on training and testing since had to split to compute vocabulary)
     to_pop = []
     for i, tokens in enumerate(tkn_train_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 10:
                 tkn_train_reviews[i][j] = '<unk>'
                 to_pop.append(token)
 
     for i, tokens in enumerate(tkn_test_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 10:
                 tkn_test_reviews[i][j] = '<unk>'
                 to_pop.append(token)
             elif token not in vocabulary:
@@ -103,6 +109,8 @@ def load_data():
     # 5. build a vocabulary with unique indexes for each word
     idx = 0
     for token in vocabulary:
+        if idx == 121:
+            print("the toekn at 121 is " + token)
         vocabulary[token] = idx
         idx += 1
     vocabulary['<unk>'] = len(vocabulary) # adding <UNK> to the vocabulary
@@ -110,7 +118,7 @@ def load_data():
     # 6. feature vectorization
     train_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_train_reviews]
     test_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_test_reviews]
-    print('current vectorized reviews are ' + str(train_reviews))
+    # print('current vectorized reviews are ' + str(train_reviews))
     
 
     return dict(
