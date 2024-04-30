@@ -1,2 +1,4 @@
 #exclude data from git
 data/
+__pycache__/
+.DS_Store

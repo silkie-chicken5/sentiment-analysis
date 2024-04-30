@@ -47,7 +47,7 @@ def load_data():
     
     csv['text'] = csv['text'].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
     print(csv.head())
-
+    ''
     # PREPROCESSING
     # randomly split examples into training and testing sets
     train_reviews, test_reviews, train_labels, test_labels = train_test_split(csv['text'], csv['score'], test_size=0.3, random_state=42)
@@ -93,13 +93,13 @@ def load_data():
     to_pop = []
     for i, tokens in enumerate(tkn_train_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 30:
                 tkn_train_reviews[i][j] = '<unk>'
                 to_pop.append(token)
 
     for i, tokens in enumerate(tkn_test_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 30:
                 tkn_test_reviews[i][j] = '<unk>'
                 to_pop.append(token)
             elif token not in vocabulary:
