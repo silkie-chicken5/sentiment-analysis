@@ -366,3 +366,69 @@ class CoLSTM(tf.keras.Model):
 #     scce = tf.keras.losses.sparse_categorical_crossentropy(masked_labs, masked_prbs, from_logits=True)
 #     loss = tf.reduce_sum(scce)
 #     return loss
+    
+class CoTransformer(tf.keras.Model):
+    def __init__(self, vocab_size, hidden_size=128, **kwargs):
+        super().__init__(**kwargs)
+        print("in init")
+        self.vocab_size = vocab_size
+        self.hidden_size = hidden_size
+        # self.window_size = window_size
+        self.embed_size = 64
+        self.output_size = 1 # pos or neg
+        self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001)
+
+        #2D
+        self.kernel_size = (3, 3) # Now specifying height and width for Conv2D
+        self.num_filters = 7 # 3 # used to be 7
+        self.pool_size = (2, 2) # For 2D pooling
+        self.strides = (1, 1) # Stride of 1
+        self.padding = "same" # This will reduce the dimension as no padding is added
+
+        self.embedding = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_size)
+        self.cnn = tf.keras.layers.Conv2D(
+            filters=self.num_filters,
+            kernel_size=self.kernel_size,
+            strides=self.strides,
+            padding=self.padding,
+        )
+        self.batch_norm = tf.keras.layers.BatchNormalization()
+        self.dropout = tf.keras.layers.Dropout(0.5)
+        self.pooling = tf.keras.layers.MaxPooling2D(pool_size=self.pool_size)
+        self.lstm = tf.keras.layers.LSTM(units=self.hidden_size, return_sequences=True, return_state=True)
+        # self.dropout = tf.keras.layers.Dropout(0.5)
+        self.dense = tf.keras.layers.Dense(units=self.output_size, activation="sigmoid")
+    
+    @tf.function
+    def call(self, reviews, training=True):
+        # print("in call")
+        review_embeddings = self.embedding(reviews) # reviews need to have dimension of self.vocab_size
+        # print("review embeddings shape: ", review_embeddings.shape)
+        
+        review_embeddings = tf.expand_dims(review_embeddings, axis=-1)
+        # print("review embeddings shape expanded: ", review_embeddings.shape)
+
+        cnn_output = self.cnn(review_embeddings)
+        cnn_normalized = self.batch_norm(cnn_output, training=training)
+        dropout = self.dropout(cnn_normalized, training=training)
+        cnn_pooled = self.pooling(dropout)
+
+        cnn_pooled = tf.reshape(cnn_pooled, [tf.shape(cnn_pooled)[0], tf.shape(cnn_pooled)[1], -1])
+
+
+        lstm_out = self.lstm(cnn_pooled)
+        # lstm_out = self.lstm(pool_dropout)
+        # lstm_out = self.lstm(review_embeddings)
+        # test = tf.expand_dims(lstm_out[0], axis=-1)
+        # lstm_normalized = self.batch_norm(test, training=training)
+        # lstm_dropout = self.dropout(lstm_normalized, training=training)
+
+        # print("lstm out shape: ", lstm_out[0].shape)
+        # dropout = self.dropout(lstm_out[0]) # Daniel: added dropout layer
+        # print("dropout shape: ", dropout)
+        # dense_out = self.dense(dropout)
+        dense_out = self.dense(lstm_out[0])
+        # dense_out = self.dense(lstm_dropout)
+        # print("dense out shape is: ", dense_out.shape)
+        # print("output size is: ", self.output_size)
+        return dense_out

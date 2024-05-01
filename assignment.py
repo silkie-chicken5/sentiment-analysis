@@ -1,8 +1,10 @@
 import os
 import argparse
 import numpy as np
-import pickle
-from preprocessing_movies import load_data 
+from preprocessing_movies import load_data as load_movies_data
+from preprocessing_airlines import load_data as load_airlines_data
+from preprocessing_elections import load_data as load_elections_data
+from preprocessing_anime import load_data as load_anime_data
 import tensorflow as tf
 from typing import Optional
 from types import SimpleNamespace
@@ -30,6 +32,7 @@ def parse_args(args=None):
     parser.add_argument('--optimizer',      type=str,   default='adam', choices=['adam', 'rmsprop', 'sgd'], help='Model\'s optimizer')
     parser.add_argument('--batch_size',     type=int,   default=64,    help='Model\'s batch size.') # used to be 30
     parser.add_argument('--hidden_size',    type=int,   default=256,    help='Hidden size used to instantiate the model.') # used to be 256
+    parser.add_argument('--data_source',    choices=['movies', 'airlines', 'elections', 'anime'],   default='movies',    help='Source of data for model')
     # parser.add_argument('--window_size',    type=int,   default=20,     help='Window size of text entries.')
     # parser.add_argument('--chkpt_path',     default='',                 help='where the model checkpoint is')
     # parser.add_argument('--check_valid',    default=True,               action="store_true",  help='if training, also print validation after each epoch')
@@ -37,6 +40,16 @@ def parse_args(args=None):
         return parser.parse_args()      ## For calling through command line
     return parser.parse_args(args)      ## For calling through notebook.
 
+def load_data(data_source):
+    # Determine which load data function to call depending on the data we want to run
+    if data_source == 'movies':
+        return load_movies_data()
+    elif data_source == 'airlines':
+        return load_airlines_data()
+    elif data_source == 'elections':
+        return load_elections_data()
+    elif data_source == 'anime':
+        return load_anime_data()
 '''
 movies:
 batch size 30 and hidden size 256 --> 0.62 loss and 0.76 accuracy
@@ -81,7 +94,7 @@ def main(args):
     #     data_dict = pickle.load(data_file)
     print("in main")
     
-    data_dict = load_data() # will need to replace with argument to decide which data to load
+    data_dict = load_data(args.data_source) # will need to replace with argument to decide which data to load
 
     train_text  = np.array(data_dict['train_reviews']) 
     test_text   = np.array(data_dict['test_reviews'])
