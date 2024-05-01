@@ -3,45 +3,110 @@ import tensorflow as tf
 
 class CoLSTM(tf.keras.Model):
 
-    def __init__(self, vocab_size, hidden_size=256, **kwargs):
+    def __init__(self, vocab_size, hidden_size=128, **kwargs):
         super().__init__(**kwargs)
+        print("in init")
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         # self.window_size = window_size
+        self.embed_size = 64
         self.output_size = 1 # pos or neg
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001)
 
-        # Convolution Hyperparameters
-        self.kernel_size = (3,3)
-        self.num_filters = 7
-        self.pool_size = (2, 2)
-        self.strides = None # defaults to pool size
-        self.padding = "same"
+        # Convolution Hyperparameters  CNN MIGHT BE STRIDE 1 VALID PADDING?
+        # self.kernel_size = (3,3)
+        # self.kernel_size = 3
+        # self.num_filters = 7
+        # # self.pool_size = (2, 2)
+        # self.pool_size = 2
+        # self.strides = None # defaults to pool size
+        # self.padding = "same"
         
+        # self.embedding = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_size)
+        # self.cnn = tf.keras.layers.Conv1D(
+        #     filters = self.num_filters, 
+        #     kernel_size=self.kernel_size, 
+        #     padding=self.padding, # strides is default 1
+        # )
+
+        # self.pooling = tf.keras.layers.MaxPooling1D(
+        #     pool_size=self.pool_size,
+        #     strides=self.strides,
+        #     padding=self.padding,
+        # )
+
+        #2D
+        self.kernel_size = (3, 3) # Now specifying height and width for Conv2D
+        self.num_filters = 7 # 3 # used to be 7
+        self.pool_size = (2, 2) # For 2D pooling
+        self.strides = (1, 1) # Stride of 1
+        self.padding = "same" # This will reduce the dimension as no padding is added
+
         self.embedding = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_size)
         self.cnn = tf.keras.layers.Conv2D(
-            filters = self.num_filters, 
-            kernel_size=self.kernel_size, 
-            padding=self.padding,
-        )
-        
-        self.pooling = tf.keras.layers.MaxPooling2D(
-            pool_size=self.pool_size,
+            filters=self.num_filters,
+            kernel_size=self.kernel_size,
             strides=self.strides,
             padding=self.padding,
         )
-        
+        self.batch_norm = tf.keras.layers.BatchNormalization()
+        self.dropout = tf.keras.layers.Dropout(0.5)
+        self.pooling = tf.keras.layers.MaxPooling2D(pool_size=self.pool_size)
         self.lstm = tf.keras.layers.LSTM(units=self.hidden_size, return_sequences=True, return_state=True)
+        # self.dropout = tf.keras.layers.Dropout(0.5)
         self.dense = tf.keras.layers.Dense(units=self.output_size, activation="sigmoid")
     
     @tf.function
-    def call(self, reviews):
+    def call(self, reviews, training=True):
+        # print("in call")
         review_embeddings = self.embedding(reviews) # reviews need to have dimension of self.vocab_size
+        # print("review embeddings shape: ", review_embeddings.shape)
+
+        # cnn_output = self.cnn(review_embeddings)
+        # print("cnn_output shape: ", cnn_output.shape)
+        # cnn_pooled = self.pooling(cnn_output)
+        # print("cnn pooled shape: ", cnn_pooled)
+        
+        review_embeddings = tf.expand_dims(review_embeddings, axis=-1)
+        # print("review embeddings shape expanded: ", review_embeddings.shape)
+
         cnn_output = self.cnn(review_embeddings)
-        cnn_pooled = self.pooling(cnn_output)
+        cnn_normalized = self.batch_norm(cnn_output, training=training)
+        dropout = self.dropout(cnn_normalized, training=training)
+        cnn_pooled = self.pooling(dropout)
+
+        # cnn_output = tf.squeeze(cnn_output, axis=2)
+        # print("cnn_output shape: ", cnn_output.shape)
+
+        # cnn_pooled = self.pooling(cnn_normalized)
+
+        # cnn_pooled = self.pooling(cnn_output)
+        # cnn_pooled = tf.reshape(cnn_pooled, [tf.shape(cnn_pooled)[0], -1, self.num_filters])
+
+        cnn_pooled = tf.reshape(cnn_pooled, [tf.shape(cnn_pooled)[0], tf.shape(cnn_pooled)[1], -1])
+        # print("cnn pooled shape: ", cnn_pooled)
+        # pool_normalized = self.batch_norm(cnn_pooled, training=training)
+        # pool_dropout = self.dropout(pool_normalized, training=training)
+        # pool_dropout = tf.reshape(pool_dropout, [tf.shape(pool_dropout)[0], tf.shape(pool_dropout)[1], -1])
+
+
         lstm_out = self.lstm(cnn_pooled)
+        # lstm_out = self.lstm(pool_dropout)
+        # lstm_out = self.lstm(review_embeddings)
+        # test = tf.expand_dims(lstm_out[0], axis=-1)
+        # lstm_normalized = self.batch_norm(test, training=training)
+        # lstm_dropout = self.dropout(lstm_normalized, training=training)
+
+        # print("lstm out shape: ", lstm_out[0].shape)
+        # dropout = self.dropout(lstm_out[0]) # Daniel: added dropout layer
+        # print("dropout shape: ", dropout)
+        # dense_out = self.dense(dropout)
         dense_out = self.dense(lstm_out[0])
-        return tf.nn.softmax(dense_out) # returns probabilities, not logits 
+        # dense_out = self.dense(lstm_dropout)
+        # print("dense out shape is: ", dense_out.shape)
+        # print("output size is: ", self.output_size)
+        return dense_out
+        return tf.nn.softmax(dense_out) # MIGHT NOT BE NECESSARY TO SOFTMAX BECAUSE SIGMOID ACTIVATION ALREADY RETURNS PROBS
 
 #     def compile(self, optimizer, loss, metrics):
 #         '''
@@ -51,6 +116,43 @@ class CoLSTM(tf.keras.Model):
 #         self.loss_function = loss 
 #         self.accuracy_function = metrics[0]
 
+    # def train(self, reviews, labels, batch_size=30):
+    #     """
+    #     Runs through one epoch - all training examples.
+
+    #     :param model: the initialized model to use for forward and backward pass
+    #     :param train_captions: train data captions (all data for training) 
+    #     :param train_images: train image features (all data for training) 
+    #     :param padding_index: the padding index, the id of *PAD* token. This integer is used when masking padding labels.
+    #     :return: None
+    #     """
+
+    #     shuffled_indices = tf.random.shuffle(tf.range(reviews.shape[0]))
+    #     reviews_shuffled = tf.gather(reviews, shuffled_indices)
+    #     labels_shuffled = tf.gather(labels, shuffled_indices)
+
+    #     total_loss = 0
+    #     # for start in range(0, len(reviews_shuffled), batch_size):
+    #     for index, end in enumerate(range(batch_size, len(reviews_shuffled)+1, batch_size)):
+    #         start = end - batch_size
+    #         # end = min(start + batch_size, len(reviews_shuffled))
+    #         train_inputs_batches = reviews_shuffled[start:end]
+    #         train_labels_batches = labels_shuffled[start:end]
+
+    #         with tf.GradientTape() as tape:
+    #             probs = self(train_inputs_batches)
+    #             loss = tf.keras.losses.binary_crossentropy(train_labels_batches, probs)
+    #             # print("loss shape is: ", tf.shape(loss))
+        
+    #         gradients = tape.gradient(loss, self.trainable_variables)
+    #         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+    #         total_loss += loss
+    #         # print("total loss shape is: ", tf.shape(total_loss))
+
+    #     avg_loss = total_loss / (len(reviews_shuffled) / batch_size)
+    #     return avg_loss
+    
     def train(self, reviews, labels, batch_size=30):
         """
         Runs through one epoch - all training examples.
@@ -70,18 +172,24 @@ class CoLSTM(tf.keras.Model):
 
         ## NOTE: make sure you are calculating gradients and optimizing as appropriate
         ##       (similar to batch_step from HW2)
-        num_batches = int(len(reviews) / batch_size)
+        print("in coLSTM train")
+        # num_batches = int(len(reviews) / batch_size)
         shuffled_indices = tf.random.shuffle(tf.range(reviews.shape[0]))
         reviews_shuffled = tf.gather(reviews, shuffled_indices)
         labels_shuffled = tf.gather(labels, shuffled_indices)
 
         total_loss = total_seen = total_correct = 0
+        losses = []
+        accuracies = []
         for index, end in enumerate(range(batch_size, len(reviews_shuffled)+1, batch_size)):
             ## Get the current batch of data, making sure to try to predict the next word
             start = end - batch_size
-            b0 = end - batch_size
-            train_inputs_batches = reviews_shuffled[b0:b1]
-            train_labels_batches = labels_shuffled[b0:b1]
+            # print("TRAINING: ", start)
+            # b0 = end - batch_size
+            # train_inputs_batches = reviews_shuffled[b0:end]
+            # train_labels_batches = labels_shuffled[b0:end]
+            train_inputs_batches = reviews_shuffled[start:end]
+            train_labels_batches = labels_shuffled[start:end]
             # batch_image_features = image_features_shuffled[start:end, :]
             # decoder_input = captions_shuffled[start:end, :-1]
             # decoder_labels = captions_shuffled[start:end, 1:]
@@ -92,24 +200,51 @@ class CoLSTM(tf.keras.Model):
                 # mask = decoder_labels != padding_index
                 # num_predictions = tf.reduce_sum(tf.cast(mask, tf.float32))
                 # loss = self.loss_function(probs, decoder_labels, mask)
-                loss = tf.keras.losses.binary_crossentropy(train_labels_batches, probs)
-                accuracy = tf.keras.metrics.binary_accuracy(train_labels_batches, probs)
+                # probs_binary = tf.cast(tf.greater_equal(probs, 0.5), tf.int64) # case for binary accuracy calculation
+                # probs_binary = tf.cast(tf.greater_equal(probs, tf.cast(0.5, probs.dtype)), tf.int64)
+                # print("these are the train labels batches: ", train_labels_batches)
+                # print("train label batches shape is: ", train_labels_batches.shape)
+                # print("these are the probs: ", probs)
+                # print("probs shape is: ", tf.shape(probs))
+                # print("reshaped probs: ", tf.squeeze(probs))
+                # print("reshaped probs: ", tf.math.reduce_mean(tf.squeeze(probs), axis=1))
+                sus_probs = tf.math.reduce_mean(tf.squeeze(probs), axis=1) # reshaping things
+                # loss = tf.keras.losses.binary_crossentropy(train_labels_batches, probs)
+                predictions = tf.cast(sus_probs >= 0.5, tf.float32)
+                true_labels = tf.cast(train_labels_batches, tf.float32)
+                loss = tf.keras.losses.binary_crossentropy(true_labels, sus_probs)
+                losses.append(loss)
+                accuracy = tf.keras.metrics.binary_accuracy(true_labels, predictions)
+                # accuracy = tf.keras.metrics.binary_accuracy(train_labels_batches, sus_probs)
+                accuracies.append(accuracy)
+                # loss = tf.keras.losses.binary_crossentropy(train_labels_batches, probs_binary)
+                # print("average loss is: ", tf.math.reduce_mean(loss))
+                # losses.append(tf.math.reduce_mean(loss))
+                # accuracy = tf.keras.metrics.binary_accuracy(train_labels_batches, probs_binary)
             gradients = tape.gradient(loss, self.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
             # accuracy = tf.keras.metrics.binary_accuracy(labels, probs, mask)
 
             ## Compute and report on aggregated statistics
             total_loss += loss
+            # total_seen += 1
             # total_seen += num_predictions
             # total_correct += num_predictions * accuracy
 
         # avg_loss = float(total_loss / total_seen)
+        # avg_loss = total_loss / total_seen
         # avg_acc = float(total_correct / total_seen)
         # avg_prp = np.exp(avg_loss)
         # print(f"\nTrain Epoch\t Loss: {avg_loss:.3f}\t Acc: {avg_acc:.3f}\t Perp: {avg_prp:.3f}")
 
         # return avg_loss, avg_acc, avg_prp
-        return total_loss
+        # print("total loss is ", total_loss)
+        # print("average loss is: ", tf.math.reduce_mean(losses))
+        # print("average loss is: ", avg_loss)
+        return tf.math.reduce_mean(losses), tf.math.reduce_mean(accuracies)
+        avg_loss = total_loss / (len(reviews_shuffled) / batch_size)
+        return avg_loss
+        # return total_loss
 
     def test(self, reviews, labels, batch_size=30):
         """
@@ -126,7 +261,8 @@ class CoLSTM(tf.keras.Model):
         # num_batches = int(len(reviews) / batch_size)
 
         # total_loss = total_seen = total_correct = 0
-        total_loss = 0
+        print("in coLSTM test")
+        # total_loss = 0
         # for index, end in enumerate(range(batch_size, len(test_captions)+1, batch_size)):
 
             # NOTE: 
@@ -153,12 +289,16 @@ class CoLSTM(tf.keras.Model):
             # loss = self.loss_function(probs, decoder_labels, mask)
             # accuracy = self.accuracy_function(probs, decoder_labels, mask)
 
-        probs = self(reviews)
-        loss = tf.keras.losses.binary_crossentropy(labels, probs)
-        accuracy = tf.keras.metrics.binary_accuracy(labels, probs)
+        probs = self(reviews, training=False)
+        sus_probs = tf.math.reduce_mean(tf.squeeze(probs), axis=1) # reshaping things
+        loss = tf.keras.losses.binary_crossentropy(labels, sus_probs)
+        predictions = tf.cast(sus_probs >= 0.5, tf.float32)
+        true_labels = tf.cast(labels, tf.float32)
+        accuracy = tf.keras.metrics.binary_accuracy(true_labels, predictions)
+        # accuracy = tf.keras.metrics.binary_accuracy(labels, probs)
 
             ## Compute and report on aggregated statistics
-        total_loss += loss
+        # total_loss += loss
             # total_seen += num_predictions
             # total_correct += num_predictions * accuracy
 
@@ -169,7 +309,9 @@ class CoLSTM(tf.keras.Model):
 
         # print()        
         # return avg_prp, avg_acc
-        return total_loss
+        # print("******loss for test is: ", loss)
+        # return total_loss
+        return loss, accuracy
     
 #     def get_config(self):
 #         return {"decoder": self.decoder} ## specific to ImageCaptionModel
