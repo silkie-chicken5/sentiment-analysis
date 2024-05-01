@@ -86,8 +86,8 @@ def load_data():
         tkn_test_reviews.append(tokens)
 
 
-    print(train_reviews[:5])
-    print(tkn_train_reviews[:5])
+    # print(train_reviews[:5])
+    # print(tkn_train_reviews[:5])
 
     # convert rare words (<20 appearances) to <unk> (done separately on training and testing since had to split to compute vocabulary)
     to_pop = []
@@ -119,7 +119,7 @@ def load_data():
     # 6. feature vectorization
     train_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_train_reviews]
     test_reviews = [[vocabulary.get(token, len(vocabulary)) for token in tokens] for tokens in tkn_test_reviews]
-    print('current vectorized reviews are ' + str(train_reviews))
+    # print('current vectorized reviews are ' + str(train_reviews))
     
 
     return dict(

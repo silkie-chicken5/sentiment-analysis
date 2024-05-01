@@ -98,7 +98,7 @@ def load_data():
     to_pop = []
     for i, tokens in enumerate(tkn_train_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 10:
                 tkn_train_reviews[i][j] = '<unk>'
                 to_pop.append(token)
     # print("******* TRAIN REVIEWS: ", tkn_train_reviews)
@@ -106,7 +106,7 @@ def load_data():
 
     for i, tokens in enumerate(tkn_test_reviews):
         for j, token in enumerate(tokens):
-            if token in vocabulary and vocabulary[token] < 20:
+            if token in vocabulary and vocabulary[token] < 10:
                 tkn_test_reviews[i][j] = '<unk>'
                 to_pop.append(token)
             elif token not in vocabulary:

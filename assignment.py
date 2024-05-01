@@ -28,8 +28,8 @@ def parse_args(args=None):
     parser.add_argument('--epochs',         type=int,   default=5,      help='Number of epochs used in training.')
     parser.add_argument('--lr',             type=float, default=1e-3,   help='Model\'s learning rate')
     parser.add_argument('--optimizer',      type=str,   default='adam', choices=['adam', 'rmsprop', 'sgd'], help='Model\'s optimizer')
-    parser.add_argument('--batch_size',     type=int,   default=30,    help='Model\'s batch size.')
-    parser.add_argument('--hidden_size',    type=int,   default=256,    help='Hidden size used to instantiate the model.')
+    parser.add_argument('--batch_size',     type=int,   default=64,    help='Model\'s batch size.') # used to be 30
+    parser.add_argument('--hidden_size',    type=int,   default=256,    help='Hidden size used to instantiate the model.') # used to be 256
     # parser.add_argument('--window_size',    type=int,   default=20,     help='Window size of text entries.')
     # parser.add_argument('--chkpt_path',     default='',                 help='where the model checkpoint is')
     # parser.add_argument('--check_valid',    default=True,               action="store_true",  help='if training, also print validation after each epoch')
@@ -37,6 +37,41 @@ def parse_args(args=None):
         return parser.parse_args()      ## For calling through command line
     return parser.parse_args(args)      ## For calling through notebook.
 
+'''
+movies:
+batch size 30 and hidden size 256 --> 0.62 loss and 0.76 accuracy
+bs 64 and hs 256 --> 0.63 loss and 0.76 accuracy
+bs 128 and hs 256 --> 0.61 loss and 0.75 accuracy
+bs 256 and hs 256 --> 0.50 loss and 0.75 accuracy
+bs 512 and hs 256 --> 0.52 loss and 0.77 accuracy
+'''
+
+'''
+airlines:
+bs 30 and hs 256 --> 0.27 loss and 0.89 accuracy
+bs 64 and hs 256 --> 0.23 loss and 0.91 accuracy
+bs 128 and hs 256 --> 0.59 loss and 0.72 accuracy
+bs 256 and hs 256 --> 0.66 loss and 0.62 accuracy
+bs 512 and hs 256 --> 0.68 loss and 0.61 accuracy
+'''
+
+'''
+elections:
+bs 30 and hs 256 --> 0.000016 loss and 1 accuracy
+bs 64 and hs 256 --> 0.000121 loss and 1 accuracy
+bs 128 and hs 256 --> 0.0145 loss and 1 accuracy
+bs 256 and hs 256 --> 0.09595 loss and 1 accuracy
+bs 512 and hs 256 --> 0.166 loss and 1 accuracy
+'''
+
+'''
+anime:
+bs 30 and hs 256 --> 0.498 loss and 0.77 accuracy
+bs 64 and hs 256 --> 0.457 loss and 0.79 accuracy
+bs 128 and hs 256 --> 0.511 loss and 0.79 accuracy
+bs 256 and hs 256 --> 0.45 loss and 0.80 accuracy
+bs 512 and hs 256 --> 0.448 loss and 0.79 accuracy
+'''
 
 def main(args):
 
@@ -159,6 +194,7 @@ def train_model(model, reviews, labels, args):
     try:
         for epoch in range(args.epochs):
             # stats += [model.train(reviews, labels, batch_size=args.batch_size)]
+            #print("batch size is ", args.batch_size)
             total_loss, total_accuracy = model.train(reviews, labels, batch_size=args.batch_size)
             # print("total loss manual calculation: ", tf.math.reduce_mean(total_loss))
             # print("len of dataset is: ", len(reviews))
