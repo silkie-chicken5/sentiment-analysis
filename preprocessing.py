@@ -24,12 +24,12 @@ class DataProcessor:
 
         # 0. additional preprocessing for anime review dataset
         if (file_path == 'data/anime_reviews.csv'):
-            csv = csv[csv[class_var] != (csv[class_var] < 3) | (csv[class_var] > 7)] # keeps only highly positive/negative reviews from anime dataset
+            csv = csv[csv[class_var] != (csv[class_var] < 3) & (csv[class_var] > 7)] # keeps only highly positive/negative reviews from anime dataset
             csv[class_var] = [1 if s > 7 else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
             csv[text_var] = csv[text_var].apply(lambda x: ' '.join(x.split()[14:]))
-    
-        csv = csv[csv[class_var] != 'neutral'] # removes neutral rows if necessary
-        csv[class_var] = [1 if s == 'positive' else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
+        else:
+            csv = csv[csv[class_var] != 'neutral'] # removes neutral rows if necessary
+            csv[class_var] = [1 if s == 'positive' else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
 
 
         # DENOISING
@@ -41,6 +41,7 @@ class DataProcessor:
             return r
 
         csv[text_var] = csv[text_var].apply(lambda r: clean_noise(r)) # lambda instead of for loop for efficiency
+        print(csv.head())
 
         # 2. stop words & duplicate removal
         stop_word_list = set(nltk.corpus.stopwords.words('english'))
@@ -50,7 +51,7 @@ class DataProcessor:
             return ' '.join(filtered_review)
     
         csv[text_var] = csv[text_var].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
-    
+        print(csv.head())
 
         # PREPROCESSING
         # randomly split examples into training and testing sets
@@ -70,7 +71,7 @@ class DataProcessor:
                 tokens = tokens[:lemm_length]  # truncation post-lemmatization (preserving significant features)
             else:
                 tokens += ['<unk>'] * (lemm_length - len(tokens)) # padding
-                tkn_train_reviews.append(tokens)
+            tkn_train_reviews.append(tokens)
             for token in tokens:
                 if token not in vocabulary:
                     vocabulary[token] = 1  # count presence of word
@@ -134,9 +135,9 @@ class DataProcessor:
     
     def preprocess(self):
         'Preprocesses the data from all four datasets. Sets the lemmatization and UNKing parameters'
-        self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 15)
-        self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 20, 5)
-        self.election_dict = self.preprocess_data('data/election_sentiment.csv', 'text', 'sentiment', 20, 5)
+        self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 10)
+        self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 10)
+        self.election_dict = self.preprocess_data('data/election_sentiment.csv', 'text', 'sentiment', 25, 10)
         self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 50, 20)
 
     def save_data(self, file_path: str):

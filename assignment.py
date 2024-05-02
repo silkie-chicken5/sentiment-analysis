@@ -80,9 +80,8 @@ def main(args):
     #     data_dict = pickle.load(data_file)
     print("in main")
     processor = DataProcessor()
+    # data_dict = processor.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 10)
     data_dict = processor.load_data(args.data_source) # will need to replace with argument to decide which data to load
-
-    print(data_dict["train_reviews"][:5])
 
     train_text  = np.array(data_dict['train_reviews']) 
     test_text   = np.array(data_dict['test_reviews'])
