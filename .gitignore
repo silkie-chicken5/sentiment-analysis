@@ -2,3 +2,4 @@
 data/
 __pycache__/
 .DS_Store
+preprocessed_data.pkl

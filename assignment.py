@@ -1,7 +1,7 @@
 import os
 import argparse
 import numpy as np
-from preprocessing import load_data
+from preprocessing import DataProcessor
 import tensorflow as tf
 from typing import Optional
 from types import SimpleNamespace
@@ -23,7 +23,6 @@ def parse_args(args=None):
     parser = argparse.ArgumentParser(description="Let's train some neural nets!", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # parser.add_argument('--type',           required=True,              choices=['rnn', 'transformer'],     help='Type of model to train')
     parser.add_argument('--task',           choices=['train', 'test', 'both'],  help='Task to run', default='both')
-    parser.add_argument('--data',           help='File path to the assignment data file.', default='./data/imdb_test.csv')
     parser.add_argument('--epochs',         type=int,   default=5,      help='Number of epochs used in training.')
     parser.add_argument('--lr',             type=float, default=1e-3,   help='Model\'s learning rate')
     parser.add_argument('--optimizer',      type=str,   default='adam', choices=['adam', 'rmsprop', 'sgd'], help='Model\'s optimizer')
@@ -80,8 +79,10 @@ def main(args):
     # with open(args.data, 'rb') as data_file: DOES NOT WORK WITH CSVs
     #     data_dict = pickle.load(data_file)
     print("in main")
-    
-    data_dict = load_data(args.data_source) # will need to replace with argument to decide which data to load
+    processor = DataProcessor()
+    data_dict = processor.load_data(args.data_source) # will need to replace with argument to decide which data to load
+
+    print(data_dict["train_reviews"][:5])
 
     train_text  = np.array(data_dict['train_reviews']) 
     test_text   = np.array(data_dict['test_reviews'])
