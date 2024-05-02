@@ -26,10 +26,10 @@ class DataProcessor:
         if (file_path == 'data/anime_reviews.csv'):
             csv = csv[csv[class_var] != (csv[class_var] < 3) & (csv[class_var] > 7)] # keeps only highly positive/negative reviews from anime dataset
             csv[class_var] = [1 if s > 7 else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
-            csv[text_var] = csv[text_var].apply(lambda x: ' '.join(x.split()[14:]))
+            csv[text_var] = csv[text_var].apply(lambda x: ' '.join(x.split()[14:])) # removes repeated text at the start
         else:
-            csv = csv[csv[class_var] != 'neutral'] # removes neutral rows if necessary
-            csv[class_var] = [1 if s == 'positive' else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
+            csv = csv[csv[class_var].lower() != 'neutral'] # removes neutral rows if necessary
+            csv[class_var] = [1 if s.lower() == 'positive' else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
 
 
         # DENOISING
@@ -110,7 +110,8 @@ class DataProcessor:
             if tkn in vocabulary:
                 vocabulary.pop(tkn)
 
-        print(tkn_train_reviews[:5])
+        print(str(tkn_train_reviews[:5]))
+        print(str(vocabulary))
 
         # 5. build a vocabulary with unique indexes for each word
         idx = 0
@@ -135,10 +136,10 @@ class DataProcessor:
     
     def preprocess(self):
         'Preprocesses the data from all four datasets. Sets the lemmatization and UNKing parameters'
-        self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 10)
-        self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 10)
+        # self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 10)
+        # self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 10)
         self.election_dict = self.preprocess_data('data/election_sentiment.csv', 'text', 'sentiment', 25, 10)
-        self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 50, 20)
+        # self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 50, 20)
 
     def save_data(self, file_path: str):
         data = {
