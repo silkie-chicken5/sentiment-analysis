@@ -1,10 +1,7 @@
 import os
 import argparse
 import numpy as np
-from preprocessing_movies import load_data as load_movies_data
-from preprocessing_airlines import load_data as load_airlines_data
-from preprocessing_elections import load_data as load_elections_data
-from preprocessing_anime import load_data as load_anime_data
+from preprocessing import load_data
 import tensorflow as tf
 from typing import Optional
 from types import SimpleNamespace
@@ -40,16 +37,6 @@ def parse_args(args=None):
         return parser.parse_args()      ## For calling through command line
     return parser.parse_args(args)      ## For calling through notebook.
 
-def load_data(data_source):
-    # Determine which load data function to call depending on the data we want to run
-    if data_source == 'movies':
-        return load_movies_data()
-    elif data_source == 'airlines':
-        return load_airlines_data()
-    elif data_source == 'elections':
-        return load_elections_data()
-    elif data_source == 'anime':
-        return load_anime_data()
 '''
 movies:
 batch size 30 and hidden size 256 --> 0.62 loss and 0.76 accuracy
