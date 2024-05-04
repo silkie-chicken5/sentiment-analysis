@@ -28,7 +28,8 @@ class DataProcessor:
             csv[class_var] = [1 if s > 7 else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
             csv[text_var] = csv[text_var].apply(lambda x: ' '.join(x.split()[14:])) # removes repeated text at the start
         else:
-            csv = csv[csv[class_var].lower() != 'neutral'] # removes neutral rows if necessary
+            csv[class_var] = csv[class_var].str.lower()
+            csv = csv[csv[class_var] != 'neutral'] # removes neutral rows if necessary
             csv[class_var] = [1 if s.lower() == 'positive' else 0 for s in csv[class_var]] # turn positive sentiment into 1, negative sentiment into 0
 
 
