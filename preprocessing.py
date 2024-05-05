@@ -137,10 +137,10 @@ class DataProcessor:
     
     def preprocess(self):
         'Preprocesses the data from all four datasets. Sets the lemmatization and UNKing parameters'
-        # self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 10)
-        # self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 10)
+        self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 10)
+        self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 10)
         self.election_dict = self.preprocess_data('data/election_sentiment.csv', 'text', 'sentiment', 25, 10)
-        # self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 50, 20)
+        self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 50, 20)
 
     def save_data(self, file_path: str):
         data = {

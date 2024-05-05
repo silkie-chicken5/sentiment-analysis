@@ -55,6 +55,8 @@ class CoLSTM(tf.keras.Model):
         self.lstm = tf.keras.layers.LSTM(units=self.hidden_size, return_sequences=True, return_state=True)
         # self.dropout = tf.keras.layers.Dropout(0.5)
         self.dense = tf.keras.layers.Dense(units=self.output_size, activation="sigmoid")
+        # self.dense1 = tf.keras.layers.Dense(units=self.output_size, activation="softmax")
+        # self.dense2 = tf.keras.layers.Dense(units=self.output_size, activation="sigmoid")
     
     @tf.function
     def call(self, reviews, training=True):
@@ -102,6 +104,8 @@ class CoLSTM(tf.keras.Model):
         # print("dropout shape: ", dropout)
         # dense_out = self.dense(dropout)
         dense_out = self.dense(lstm_out[0])
+        # dense_out1 = self.dense1(lstm_out[0])
+        # dense_out = self.dense2(dense_out1)
         # dense_out = self.dense(lstm_dropout)
         # print("dense out shape is: ", dense_out.shape)
         # print("output size is: ", self.output_size)
@@ -313,61 +317,10 @@ class CoLSTM(tf.keras.Model):
         # return total_loss
         return loss, accuracy
     
-#     def get_config(self):
-#         return {"decoder": self.decoder} ## specific to ImageCaptionModel
 
-#     @classmethod
-#     def from_config(cls, config):
-#         return cls(**config)
-    
-#     def get_config(self):
-#         base_config = super().get_config()
-#         config = {
-#             "decoder": tf.keras.utils.serialize_keras_object(self.decoder),
-#         }
-#         return {**base_config, **config}
-
-#     @classmethod
-#     def from_config(cls, config):
-#         decoder_config = config.pop("decoder")
-#         decoder = tf.keras.utils.deserialize_keras_object(decoder_config)
-#         return cls(decoder, **config)
-
-# def accuracy_function(prbs, labels, mask):
-#     """
-#     DO NOT CHANGE
-
-#     Computes the batch accuracy
-
-#     :param prbs:  float tensor, word prediction probabilities [BATCH_SIZE x WINDOW_SIZE x VOCAB_SIZE]
-#     :param labels:  integer tensor, word prediction labels [BATCH_SIZE x WINDOW_SIZE]
-#     :param mask:  tensor that acts as a padding mask [BATCH_SIZE x WINDOW_SIZE]
-#     :return: scalar tensor of accuracy of the batch between 0 and 1
-#     """
-#     correct_classes = tf.argmax(prbs, axis=-1) == labels
-#     accuracy = tf.reduce_mean(tf.boolean_mask(tf.cast(correct_classes, tf.float32), mask))
-#     return accuracy
-
-
-# def loss_function(prbs, labels, mask):
-#     """
-#     DO NOT CHANGE
-
-#     Calculates the model cross-entropy loss after one forward pass
-#     Please use reduce sum here instead of reduce mean to make things easier in calculating per symbol accuracy.
-
-#     :param prbs:  float tensor, word prediction probabilities [batch_size x window_size x english_vocab_size]
-#     :param labels:  integer tensor, word prediction labels [batch_size x window_size]
-#     :param mask:  tensor that acts as a padding mask [batch_size x window_size]
-#     :return: the loss of the model as a tensor
-#     """
-#     masked_labs = tf.boolean_mask(labels, mask)
-#     masked_prbs = tf.boolean_mask(prbs, mask)
-#     scce = tf.keras.losses.sparse_categorical_crossentropy(masked_labs, masked_prbs, from_logits=True)
-#     loss = tf.reduce_sum(scce)
-#     return loss
-    
-class CoTransformer(tf.keras.Model):
+#####################################################################
+### LSTM-Only Model
+class LSTM(tf.keras.Model):
     def __init__(self, vocab_size, hidden_size=128, **kwargs):
         super().__init__(**kwargs)
         print("in init")
@@ -378,25 +331,10 @@ class CoTransformer(tf.keras.Model):
         self.output_size = 1 # pos or neg
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001)
 
-        #2D
-        self.kernel_size = (3, 3) # Now specifying height and width for Conv2D
-        self.num_filters = 7 # 3 # used to be 7
-        self.pool_size = (2, 2) # For 2D pooling
-        self.strides = (1, 1) # Stride of 1
-        self.padding = "same" # This will reduce the dimension as no padding is added
-
         self.embedding = tf.keras.layers.Embedding(input_dim=self.vocab_size, output_dim=self.embed_size)
-        self.cnn = tf.keras.layers.Conv2D(
-            filters=self.num_filters,
-            kernel_size=self.kernel_size,
-            strides=self.strides,
-            padding=self.padding,
-        )
         self.batch_norm = tf.keras.layers.BatchNormalization()
         self.dropout = tf.keras.layers.Dropout(0.5)
-        self.pooling = tf.keras.layers.MaxPooling2D(pool_size=self.pool_size)
         self.lstm = tf.keras.layers.LSTM(units=self.hidden_size, return_sequences=True, return_state=True)
-        # self.dropout = tf.keras.layers.Dropout(0.5)
         self.dense = tf.keras.layers.Dense(units=self.output_size, activation="sigmoid")
     
     @tf.function
@@ -405,18 +343,18 @@ class CoTransformer(tf.keras.Model):
         review_embeddings = self.embedding(reviews) # reviews need to have dimension of self.vocab_size
         # print("review embeddings shape: ", review_embeddings.shape)
         
-        review_embeddings = tf.expand_dims(review_embeddings, axis=-1)
+        # review_embeddings = tf.expand_dims(review_embeddings, axis=-1)
         # print("review embeddings shape expanded: ", review_embeddings.shape)
 
-        cnn_output = self.cnn(review_embeddings)
-        cnn_normalized = self.batch_norm(cnn_output, training=training)
-        dropout = self.dropout(cnn_normalized, training=training)
-        cnn_pooled = self.pooling(dropout)
+        # cnn_output = self.cnn(review_embeddings)
+        # cnn_normalized = self.batch_norm(cnn_output, training=training)
+        # dropout = self.dropout(cnn_normalized, training=training)
+        # cnn_pooled = self.pooling(dropout)
 
-        cnn_pooled = tf.reshape(cnn_pooled, [tf.shape(cnn_pooled)[0], tf.shape(cnn_pooled)[1], -1])
+        # cnn_pooled = tf.reshape(cnn_pooled, [tf.shape(cnn_pooled)[0], tf.shape(cnn_pooled)[1], -1])
 
 
-        lstm_out = self.lstm(cnn_pooled)
+        lstm_out = self.lstm(review_embeddings)
         # lstm_out = self.lstm(pool_dropout)
         # lstm_out = self.lstm(review_embeddings)
         # test = tf.expand_dims(lstm_out[0], axis=-1)
@@ -432,3 +370,100 @@ class CoTransformer(tf.keras.Model):
         # print("dense out shape is: ", dense_out.shape)
         # print("output size is: ", self.output_size)
         return dense_out
+    
+
+    def train(self, reviews, labels, batch_size=30):
+        """
+        Runs through one epoch - all training examples.
+
+        :param model: the initialized model to use for forward and backward pass
+        :param train_captions: train data captions (all data for training) 
+        :param train_images: train image features (all data for training) 
+        :param padding_index: the padding index, the id of *PAD* token. This integer is used when masking padding labels.
+        :return: None
+        """
+
+        ## TODO: Implement similar to test below.
+
+        ## NOTE: shuffle the training examples (perhaps using tf.random.shuffle on a
+        ##       range of indices spanning # of training entries, then tf.gather) 
+        ##       to make training smoother over multiple epochs.
+
+        ## NOTE: make sure you are calculating gradients and optimizing as appropriate
+        ##       (similar to batch_step from HW2)
+        print("in LSTM train")
+        # num_batches = int(len(reviews) / batch_size)
+        shuffled_indices = tf.random.shuffle(tf.range(reviews.shape[0]))
+        reviews_shuffled = tf.gather(reviews, shuffled_indices)
+        labels_shuffled = tf.gather(labels, shuffled_indices)
+
+        total_loss = total_seen = total_correct = 0
+        losses = []
+        accuracies = []
+        for index, end in enumerate(range(batch_size, len(reviews_shuffled)+1, batch_size)):
+            ## Get the current batch of data, making sure to try to predict the next word
+            start = end - batch_size
+            # print("TRAINING: ", start)
+            # b0 = end - batch_size
+            # train_inputs_batches = reviews_shuffled[b0:end]
+            # train_labels_batches = labels_shuffled[b0:end]
+            train_inputs_batches = reviews_shuffled[start:end]
+            train_labels_batches = labels_shuffled[start:end]
+            # batch_image_features = image_features_shuffled[start:end, :]
+            # decoder_input = captions_shuffled[start:end, :-1]
+            # decoder_labels = captions_shuffled[start:end, 1:]
+
+            with tf.GradientTape() as tape:
+                ## Perform a no-training forward pass. Make sure to factor out irrelevant labels.
+                probs = self(train_inputs_batches) # call function 
+                sus_probs = tf.math.reduce_mean(tf.squeeze(probs), axis=1) # reshaping things
+                # loss = tf.keras.losses.binary_crossentropy(train_labels_batches, probs)
+                predictions = tf.cast(sus_probs >= 0.5, tf.float32)
+                true_labels = tf.cast(train_labels_batches, tf.float32)
+                loss = tf.keras.losses.binary_crossentropy(true_labels, sus_probs)
+                losses.append(loss)
+                accuracy = tf.keras.metrics.binary_accuracy(true_labels, predictions)
+                # accuracy = tf.keras.metrics.binary_accuracy(train_labels_batches, sus_probs)
+                accuracies.append(accuracy)
+            gradients = tape.gradient(loss, self.trainable_variables)
+            self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+            # accuracy = tf.keras.metrics.binary_accuracy(labels, probs, mask)
+
+            ## Compute and report on aggregated statistics
+            total_loss += loss
+            # total_seen += 1
+            # total_seen += num_predictions
+            # total_correct += num_predictions * accuracy
+
+        return tf.math.reduce_mean(losses), tf.math.reduce_mean(accuracies)
+        avg_loss = total_loss / (len(reviews_shuffled) / batch_size)
+        return avg_loss
+        # return total_loss
+
+    def test(self, reviews, labels, batch_size=30):
+        """
+        DO NOT CHANGE; Use as inspiration
+
+        Runs through one epoch - all testing examples.
+
+        :param model: the initilized model to use for forward and backward pass
+        :param test_captions: test caption data (all data for testing) of shape (num captions,20)
+        :param test_image_features: test image feature data (all data for testing) of shape (num captions,1000)
+        :param padding_index: the padding index, the id of *PAD* token. This integer is used to mask padding labels.
+        :returns: perplexity of the test set, per symbol accuracy on test set
+        """
+        # num_batches = int(len(reviews) / batch_size)
+
+        # total_loss = total_seen = total_correct = 0
+        print("in LSTM test")
+        # total_loss = 0
+        # for index, end in enumerate(range(batch_size, len(test_captions)+1, batch_size)):
+
+        probs = self(reviews, training=False)
+        sus_probs = tf.math.reduce_mean(tf.squeeze(probs), axis=1) # reshaping things
+        loss = tf.keras.losses.binary_crossentropy(labels, sus_probs)
+        predictions = tf.cast(sus_probs >= 0.5, tf.float32)
+        true_labels = tf.cast(labels, tf.float32)
+        accuracy = tf.keras.metrics.binary_accuracy(true_labels, predictions)
+
+        return loss, accuracy
