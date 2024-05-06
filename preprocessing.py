@@ -42,7 +42,6 @@ class DataProcessor:
             return r
 
         csv[text_var] = csv[text_var].apply(lambda r: clean_noise(r)) # lambda instead of for loop for efficiency
-        print(csv.head())
 
         # 2. stop words & duplicate removal
         stop_word_list = set(nltk.corpus.stopwords.words('english'))
@@ -52,7 +51,7 @@ class DataProcessor:
             return ' '.join(filtered_review)
     
         csv[text_var] = csv[text_var].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
-        print(csv.head())
+        print("length is " + str(len(csv)))
 
         # PREPROCESSING
         # randomly split examples into training and testing sets
@@ -112,7 +111,6 @@ class DataProcessor:
                 vocabulary.pop(tkn)
 
         print(str(tkn_train_reviews[:5]))
-        print(str(vocabulary))
 
         # 5. build a vocabulary with unique indexes for each word
         idx = 0
@@ -137,10 +135,10 @@ class DataProcessor:
     
     def preprocess(self):
         'Preprocesses the data from all four datasets. Sets the lemmatization and UNKing parameters'
-        # self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 25, 10)
-        # self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 10)
-        self.election_dict = self.preprocess_data('data/election_sentiment.csv', 'text', 'sentiment', 25, 10)
-        # self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 50, 20)
+        self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 50, 10)
+        self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 5)
+        self.election_dict = self.preprocess_data('data/election_sentiment.csv', 'text', 'sentiment', 25, 5)
+        self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 60, 15)
 
     def save_data(self, file_path: str):
         data = {
