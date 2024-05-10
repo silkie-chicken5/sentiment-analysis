@@ -34,8 +34,7 @@ class AttentionMatrix(tf.keras.layers.Layer):
         # 1) compute attention weights using queries and key matrices 
         #       - if use_mask==True, then make sure to add the attention mask before softmax
         # 2) return the attention matrix
-
-        # Check lecture slides for how to compute self-attention
+        
         # Remember:
         # - Q is [batch_size x window_size_queries x embedding_size]
         # - K is [batch_size x window_size_keys x embedding_size]

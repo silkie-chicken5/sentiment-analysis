@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from model import CoLSTM
 from model import LSTM
 from model import CNN
+from model import CoTransformer
 
 # from model import ImageCaptionModel, accuracy_function, loss_function
 # from decoder import TransformerDecoder, RNNDecoder
@@ -31,7 +32,7 @@ def parse_args(args=None):
     parser.add_argument('--batch_size',     type=int,   default=64,    help='Model\'s batch size.') # used to be 30
     parser.add_argument('--hidden_size',    type=int,   default=256,    help='Hidden size used to instantiate the model.') # used to be 256
     parser.add_argument('--data_source',    choices=['movies', 'airlines', 'elections', 'anime'],   default='movies',    help='Source of data for model')
-    parser.add_argument('--model',    choices=['colstm', 'lstm', 'cnn'],   default='colstm',    help='model architecture to run')
+    parser.add_argument('--model',    choices=['colstm', 'lstm', 'cnn', 'trans'],   default='colstm',    help='model architecture to run')
     # parser.add_argument('--window_size',    type=int,   default=20,     help='Window size of text entries.')
     # parser.add_argument('--chkpt_path',     default='',                 help='where the model checkpoint is')
     # parser.add_argument('--check_valid',    default=True,               action="store_true",  help='if training, also print validation after each epoch')
@@ -113,6 +114,8 @@ def main(args):
         model = LSTM(vocab_size=(len(vocabulary) + 1))
     elif args.model == "cnn":
         model = CNN(vocab_size=(len(vocabulary) + 1))
+    elif args.model == "trans":
+        model = CoTransformer(vocab_size=(len(vocabulary) + 1))
 
 
     ##############################################################################
