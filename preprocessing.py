@@ -51,7 +51,6 @@ class DataProcessor:
             return ' '.join(filtered_review)
     
         csv[text_var] = csv[text_var].apply(lambda r: remove_stop_words(r)) # lambda instead of for loop for efficiency
-        print("length is " + str(len(csv)))
 
         # PREPROCESSING
         # randomly split examples into training and testing sets
@@ -110,8 +109,6 @@ class DataProcessor:
             if tkn in vocabulary:
                 vocabulary.pop(tkn)
 
-        print(str(tkn_train_reviews[:5]))
-
         # 5. build a vocabulary with unique indexes for each word
         idx = 0
         for token in vocabulary:
@@ -138,7 +135,10 @@ class DataProcessor:
         self.imdb_dict = self.preprocess_data('data/imdb_reviews.csv', 'review', 'sentiment', 50, 10)
         self.airline_dict = self.preprocess_data('data/airline_tweets.csv', 'text', 'airline_sentiment', 25, 5)
         self.election_dict = self.preprocess_data('data/election_sentiment.csv', 'text', 'sentiment', 25, 5)
-        self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 60, 15)
+        
+        # Must preprocess the anime dataset separately from the other datasets due to its size.
+        # Uncomment the following line and comment the above calls to preprocess_data to preprocess the anime dataset. 
+        # self.anime_dict = self.preprocess_data('data/anime_reviews.csv', 'text', 'score', 60, 15)
 
     def save_data(self, file_path: str):
         data = {
